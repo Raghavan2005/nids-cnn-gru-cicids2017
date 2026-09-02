@@ -1,0 +1,63 @@
+======================================================================
+LOAO ZERO-DAY GENERALIZATION ANALYSIS
+======================================================================
+
+The Leave-One-Attack-Out (LOAO) experiment evaluates the ability of the CNN-GRU model to recognize an attack family that was excluded from training.
+
+RESULTS
+----------------------------------------------------------------------
+
+DoS Hulk
+  Accuracy  : 91.20%
+  Precision : 100.00%
+  Recall    : 2.44%
+  F1        : 4.77%
+  Threshold : 0.7
+
+DDoS
+  Accuracy  : 94.96%
+  Precision : 99.30%
+  Recall    : 5.51%
+  F1        : 10.44%
+  Threshold : 0.7
+
+PortScan
+  Accuracy  : 93.89%
+  Precision : 100.00%
+  Recall    : 6.02%
+  F1        : 11.36%
+  Threshold : 0.7
+
+DoS GoldenEye
+  Accuracy  : 99.61%
+  Precision : 100.00%
+  Recall    : 13.17%
+  F1        : 23.28%
+  Threshold : 0.7
+
+FTP-Patator
+  Accuracy  : 99.66%
+  Precision : 66.67%
+  Recall    : 2.53%
+  F1        : 4.88%
+  Threshold : 0.7
+
+SSH-Patator
+  Accuracy  : 99.76%
+  Precision : 100.00%
+  Recall    : 7.69%
+  F1        : 14.29%
+  Threshold : 0.7
+
+======================================================================
+SUMMARY
+======================================================================
+
+Mean Recall : 6.23%
+Mean F1     : 11.50%
+
+The results show a substantial reduction in recall when an attack family is completely excluded from training. Although the overall accuracy remains high, the low recall and F1 scores indicate that the model does not reliably identify unseen attack families.
+
+This provides evidence that conventional CNN-GRU classification performance on known attack classes does not necessarily translate into strong zero-day generalization.
+
+The finding motivates further analysis of the learned feature representations to determine whether attack families form distinct clusters and whether the model learns attack-family-dependent representations.

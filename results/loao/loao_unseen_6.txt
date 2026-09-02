@@ -1,0 +1,14 @@
+CICIDS2017 LOAO ZERO-DAY EVALUATION
+======================================================================
+
+Feature count: 40
+Sequence length: 10
+Unseen attack: SSH-Patator
+
+METRICS
+----------------------------------------------------------------------
+Accuracy          : 0.9976
+Precision         : 1.0000
+Recall            : 0.0769
+F1 Score          : 0.1429
+Threshold         : 0.70

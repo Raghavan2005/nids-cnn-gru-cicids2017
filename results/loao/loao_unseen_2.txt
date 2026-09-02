@@ -1,0 +1,14 @@
+CICIDS2017 LOAO ZERO-DAY EVALUATION
+======================================================================
+
+Feature count: 40
+Sequence length: 10
+Unseen attack: DDoS
+
+METRICS
+----------------------------------------------------------------------
+Accuracy          : 0.9496
+Precision         : 0.9930
+Recall            : 0.0551
+F1 Score          : 0.1044
+Threshold         : 0.70

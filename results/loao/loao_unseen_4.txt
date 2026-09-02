@@ -1,0 +1,14 @@
+CICIDS2017 LOAO ZERO-DAY EVALUATION
+======================================================================
+
+Feature count: 40
+Sequence length: 10
+Unseen attack: DoS GoldenEye
+
+METRICS
+----------------------------------------------------------------------
+Accuracy          : 0.9961
+Precision         : 1.0000
+Recall            : 0.1317
+F1 Score          : 0.2328
+Threshold         : 0.70

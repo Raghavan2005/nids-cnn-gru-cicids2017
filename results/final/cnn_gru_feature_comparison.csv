@@ -1,0 +1,5 @@
+Feature_Set,Features,Accuracy,Balanced_Accuracy,Macro_F1,Weighted_F1
+Top-10,10,0.9995,0.9986,0.9931,0.9995
+Top-20,20,1.0,0.9991,0.9985,1.0
+Top-30,30,1.0,0.9991,0.9989,1.0
+Top-40,40,1.0,1.0,1.0,1.0

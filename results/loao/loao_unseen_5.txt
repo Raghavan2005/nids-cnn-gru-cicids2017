@@ -1,0 +1,14 @@
+CICIDS2017 LOAO ZERO-DAY EVALUATION
+======================================================================
+
+Feature count: 40
+Sequence length: 10
+Unseen attack: FTP-Patator
+
+METRICS
+----------------------------------------------------------------------
+Accuracy          : 0.9966
+Precision         : 0.6667
+Recall            : 0.0253
+F1 Score          : 0.0488
+Threshold         : 0.70

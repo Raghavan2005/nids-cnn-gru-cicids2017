@@ -1,0 +1,8 @@
+Analysis,Main_Result,Interpretation
+Top-10 CNN-GRU,Macro F1 = 0.9931,Strong classification performance
+Top-20 CNN-GRU,Macro F1 = 0.9985,Performance improves with more features
+Top-30 CNN-GRU,Macro F1 = 0.9989,Excellent conventional test performance
+Top-40 CNN-GRU,Macro F1 = 1.0000,Highest conventional test performance
+LOAO,Mean Recall = 0.0623,Unseen attack generalization remains weak
+t-SNE,Top-30 feature-space visualization,Visual analysis of class separation
+Protocol Check,Train/test overlap detected,Results require cautious interpretation

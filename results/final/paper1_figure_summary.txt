@@ -1,0 +1,21 @@
+PAPER 1 FINAL FIGURE SUMMARY
+======================================================================
+
+CONVENTIONAL TEST PERFORMANCE
+----------------------------------------------------------------------
+Top-10: Accuracy=0.9995, Balanced Accuracy=0.9986, Macro F1=0.9931, Weighted F1=0.9995
+Top-20: Accuracy=1.0000, Balanced Accuracy=0.9991, Macro F1=0.9985, Weighted F1=1.0000
+Top-30: Accuracy=1.0000, Balanced Accuracy=0.9991, Macro F1=0.9989, Weighted F1=1.0000
+Top-40: Accuracy=1.0000, Balanced Accuracy=1.0000, Macro F1=1.0000, Weighted F1=1.0000
+
+LOAO UNSEEN-ATTACK GENERALIZATION
+----------------------------------------------------------------------
+DoS Hulk: Accuracy=0.9120, Precision=1.0000, Recall=0.0244, F1=0.0477
+DDoS: Accuracy=0.9496, Precision=0.9930, Recall=0.0551, F1=0.1044
+PortScan: Accuracy=0.9389, Precision=1.0000, Recall=0.0602, F1=0.1136
+DoS GoldenEye: Accuracy=0.9961, Precision=1.0000, Recall=0.1317, F1=0.2328
+FTP-Patator: Accuracy=0.9966, Precision=0.6667, Recall=0.0253, F1=0.0488
+SSH-Patator: Accuracy=0.9976, Precision=1.0000, Recall=0.0769, F1=0.1429
+
+Mean LOAO Recall: 0.0623
+Mean LOAO F1: 0.1150

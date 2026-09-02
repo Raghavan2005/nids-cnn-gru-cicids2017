@@ -1,0 +1,66 @@
+TOP-30 TRAIN/TEST LABEL MISMATCH INSPECTION
+============================================================
+
+Common feature patterns: 45848
+Mismatched feature patterns: 81
+
+LABEL COMBINATIONS
+------------------------------------------------------------
+train_labels test_labels  count
+         0,3           3     35
+         0,1           1     11
+         0,6           6      8
+         0,2           0      7
+           3         0,3      6
+           1         0,1      3
+         0,5           0      2
+           0         0,5      2
+           0         0,2      2
+           0           2      1
+           0           1      1
+           1           0      1
+           4           0      1
+           6         0,6      1
+
+EXAMPLES
+------------------------------------------------------------
+
+Example 1
+Training labels: [0, 3]
+Testing labels: [3]
+
+Example 2
+Training labels: [0, 3]
+Testing labels: [3]
+
+Example 3
+Training labels: [0, 3]
+Testing labels: [3]
+
+Example 4
+Training labels: [0, 3]
+Testing labels: [3]
+
+Example 5
+Training labels: [1]
+Testing labels: [0, 1]
+
+Example 6
+Training labels: [0, 3]
+Testing labels: [3]
+
+Example 7
+Training labels: [0, 3]
+Testing labels: [3]
+
+Example 8
+Training labels: [0, 2]
+Testing labels: [0]
+
+Example 9
+Training labels: [0, 2]
+Testing labels: [0]
+
+Example 10
+Training labels: [0, 3]
+Testing labels: [3]

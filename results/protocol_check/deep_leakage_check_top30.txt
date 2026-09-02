@@ -1,0 +1,21 @@
+DEEP TRAIN / TEST LEAKAGE CHECK - TOP 30
+============================================================
+
+Training shape: (2244572, 31)
+Testing shape : (561143, 31)
+
+Unique train feature rows: 1736659
+Unique test feature rows: 459382
+Common feature rows: 45848
+
+Training rows involved in overlap: 476610
+Testing rows involved in overlap: 145323
+Training overlap percentage: 21.233892%
+Testing overlap percentage: 25.897677%
+
+Duplicate signatures with shared label: 45844
+Duplicate signatures with label mismatch: 81
+
+CONCLUSION
+------------------------------------------------------------
+Exact feature-row overlap exists and some overlapping feature signatures have different labels. This requires investigation because identical feature vectors receiving different labels can affect evaluation.

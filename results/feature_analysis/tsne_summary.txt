@@ -1,0 +1,23 @@
+CICIDS2017 t-SNE FEATURE-SPACE ANALYSIS
+======================================================================
+
+Feature configuration: Top-30 ANOVA features
+Original samples: 2,244,572
+t-SNE samples: 14,000
+Samples per class: 2,000
+Perplexity: 30
+Iterations: 1000
+Random state: 42
+
+Sampled class distribution
+----------------------------------------------------------------------
+0 | BENIGN               | 2,000
+1 | DoS Hulk             | 2,000
+2 | DDoS                 | 2,000
+3 | PortScan             | 2,000
+4 | DoS GoldenEye        | 2,000
+5 | FTP-Patator          | 2,000
+6 | SSH-Patator          | 2,000
+
+Interpretation:
+The t-SNE plot provides a two-dimensional visualization of the Top-30 ANOVA feature space. Clusters that are well separated indicate that the corresponding classes have distinguishable feature representations, while overlapping regions indicate similarities between classes.

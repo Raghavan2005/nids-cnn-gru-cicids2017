@@ -1,0 +1,7 @@
+PAPER 1 PROTOCOL / LEAKAGE SANITY CHECK
+============================================================
+
+ANOVA dataset structure : CHECK
+Scaling structure       : PASS
+Sequence structure      : PASS
+Sample overlap check    : CHECK
