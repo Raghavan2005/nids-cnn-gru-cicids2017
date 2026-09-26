@@ -239,7 +239,7 @@ def main():
 
     output_file = (
         PROCESSED_DIR /
-        "cicids2017_clean_selected.csv"
+        "cicids2017_final.csv"
     )
 
     combined_df.to_csv(

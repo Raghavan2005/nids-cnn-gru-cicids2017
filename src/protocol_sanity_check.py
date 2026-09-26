@@ -6,9 +6,9 @@ import numpy as np
 # PROJECT PATHS
 # ============================================================
 
-BASE_DIR = Path(r"D:\PS26-PAPER1")
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-ANOVA_DIR = BASE_DIR / "data" / "processed" / "anova_datasets"
+ANOVA_DIR = BASE_DIR / "data" / "processed" / "feature_selection" / "anova_datasets"
 SCALED_DIR = BASE_DIR / "data" / "processed" / "scaled"
 SEQ_DIR = BASE_DIR / "data" / "processed" / "sequences_class"
 RESULT_DIR = BASE_DIR / "results" / "protocol_check"

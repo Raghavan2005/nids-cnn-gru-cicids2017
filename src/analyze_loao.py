@@ -13,6 +13,7 @@ Creates:
 """
 
 import os
+from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -21,7 +22,7 @@ import matplotlib.pyplot as plt
 # PATHS
 # ============================================================
 
-BASE_DIR = r"D:\PS26-PAPER1"
+BASE_DIR = str(Path(__file__).resolve().parent.parent)
 
 INPUT_FILE = os.path.join(
     BASE_DIR,

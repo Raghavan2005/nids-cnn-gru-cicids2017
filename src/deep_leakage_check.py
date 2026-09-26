@@ -6,7 +6,7 @@ import numpy as np
 # DEEP TRAIN / TEST LEAKAGE CHECK
 # ============================================================
 
-BASE_DIR = Path(r"D:\PS26-PAPER1")
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 SCALED_DIR = BASE_DIR / "data" / "processed" / "scaled"
 RESULT_DIR = BASE_DIR / "results" / "protocol_check"

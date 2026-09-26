@@ -1,7 +1,7 @@
 from pathlib import Path
 import pandas as pd
 
-BASE_DIR = Path(r"D:\PS26-PAPER1")
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 RESULTS_DIR = BASE_DIR / "results"
 LOAO_FILE = RESULTS_DIR / "loao" / "loao_summary.csv"

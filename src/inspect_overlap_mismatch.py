@@ -1,7 +1,7 @@
 from pathlib import Path
 import pandas as pd
 
-BASE_DIR = Path(r"D:\PS26-PAPER1")
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 TRAIN_FILE = BASE_DIR / "data" / "processed" / "scaled" / "train_top_30_scaled.csv"
 TEST_FILE = BASE_DIR / "data" / "processed" / "scaled" / "test_top_30_scaled.csv"
