@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traffic Simulator</title>
+<style>
+  :root {
+    --bg:#f5f7fa; --card:#ffffff; --line:#dde3ec; --text:#1b2333; --muted:#6a7588;
+    --accent:#2457d6; --danger:#c62f3d; --ok:#1c8a4f; --warn:#b76e00;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { padding:16px; background:var(--card); border-bottom:1px solid var(--line); }
+  h1 { font-size:17px; margin:0; }
+  header p { margin:2px 0 0; color:var(--muted); font-size:13px; }
+  main { padding:16px; max-width:520px; margin:0 auto; }
+  h2 { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  .status { padding:12px 14px; border-radius:10px; border:1px solid var(--line);
+            background:var(--card); font-weight:600; }
+  .status.ok { color:var(--ok); } .status.bad { color:var(--danger); border-color:var(--danger); background:#fdf1f2; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button { font:inherit; padding:14px 10px; border-radius:10px; border:1px solid var(--line);
+           background:var(--card); color:var(--text); font-weight:600; text-align:left; }
+  button small { display:block; font-weight:400; color:var(--muted); font-size:12px; margin-top:2px; }
+  button.normal { border-color:var(--ok); }
+  button.attack { border-color:#e7b6bb; }
+  button:active { background:#eef2fb; }
+  button:disabled { opacity:.45; }
+  .log { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px;
+         font:12.5px/1.6 ui-monospace,Menlo,Consolas,monospace; min-height:120px; max-height:260px; overflow:auto; }
+  .log .b { color:var(--danger); } .log .g { color:var(--ok); } .log .w { color:var(--warn); }
+  select { font:inherit; padding:12px 10px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--text); }
+  .note { color:var(--muted); font-size:12.5px; margin-top:14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Traffic Simulator</h1>
+  <p>Sends test traffic to the NIDS running on the PC.</p>
+</header>
+<main>
+  <div id="status" class="status">Connecting to PC…</div>
+
+  <h2>Burst size and speed</h2>
+  <div class="grid" style="margin-bottom:6px">
+    <select id="size"><option value="15">15 requests</option><option value="100">100 requests</option>
+      <option value="500">500 requests</option><option value="2000">2000 requests</option></select>
+    <select id="speed"><option value="350">Normal (350 ms)</option><option value="50">Fast (50 ms)</option>
+      <option value="0">Max speed</option></select>
+  </div>
+
+  <h2>Send traffic</h2>
+  <div class="grid" id="buttons"></div>
+
+  <h2>Response from PC</h2>
+  <div class="log" id="log"></div>
+
+  <p class="note">Each button sends real HTTP requests to the PC. The PC's CNN-GRU model
+  classifies dataset flow samples of the chosen traffic type, and blocks this phone when it
+  sees repeated attacks.</p>
+</main>
+
+<script>
+const TYPES = [
+  [0, "Normal traffic", "BENIGN", "normal"],
+  [1, "DoS Hulk", "HTTP flood", "attack"],
+  [2, "DDoS", "Distributed flood", "attack"],
+  [3, "PortScan", "Probe open ports", "attack"],
+  [4, "DoS GoldenEye", "Slow HTTP DoS", "attack"],
+  [5, "FTP-Patator", "FTP brute force", "attack"],
+  [6, "SSH-Patator", "SSH brute force", "attack"],
+];
+const $ = id => document.getElementById(id);
+let busy = false;
+
+$("buttons").innerHTML = TYPES.map(([id, name, sub, cls]) =>
+  `<button class="${cls}" data-id="${id}">${name}<small>${sub}</small></button>`).join("");
+$("buttons").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (b && !busy) run(+b.dataset.id);
+});
+
+function log(msg, cls) {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + "  " + msg;
+  $("log").prepend(d);
+  while ($("log").children.length > 200) $("log").lastChild.remove();
+}
+function setStatus(text, bad) {
+  $("status").textContent = text;
+  $("status").className = "status " + (bad ? "bad" : "ok");
+}
+function lock(v) { busy = v; document.querySelectorAll("button, select").forEach(b => b.disabled = v); }
+
+async function ping() {
+  try {
+    const r = await (await fetch("/api/ping")).json();
+    if (r.blocked) setStatus("BLOCKED by the PC's IDS", true);
+    else setStatus(r.model_ready ? "Connected to PC – model ready" : "Connected – model still loading…", !r.model_ready);
+  } catch { setStatus("Cannot reach the PC (same Wi-Fi?)", true); }
+}
+
+async function run(id) {
+  lock(true);
+  const BURST = +$("size").value, GAP_MS = +$("speed").value;
+  const name = TYPES[id][1];
+  log(`Sending ${BURST} × ${name}`);
+  for (let i = 1; i <= BURST; i++) {
+    try {
+      const res = await fetch("/api/send", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify({class_id:id})});
+      const j = await res.json();
+      if (res.status === 403) {
+        log(`#${i} 403 – ${j.message}`, "b");
+        setStatus("BLOCKED by the PC's IDS", true);
+        break;
+      }
+      if (!res.ok) { log(`#${i} error: ${j.error || res.status}`, "w"); break; }
+      const bad = j.predicted !== "BENIGN";
+      log(`#${i} PC says ${j.predicted} (${j.confidence}%)${j.action !== "allowed" ? " – " + j.action : ""}`, bad ? "b" : "g");
+      if (j.status === "blocked") { setStatus("BLOCKED by the PC's IDS", true); break; }
+    } catch { log(`#${i} no response from PC`, "w"); break; }
+    await new Promise(r => setTimeout(r, GAP_MS));
+  }
+  lock(false);
+  ping();
+}
+
+ping(); setInterval(ping, 3000);
+</script>
+</body>
+</html>

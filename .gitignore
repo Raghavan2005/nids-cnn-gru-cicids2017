@@ -42,3 +42,6 @@ models/*.pkl
 
 # Temporary files
 *.tmp
+
+# Demo app runtime logs
+webapp/logs/
