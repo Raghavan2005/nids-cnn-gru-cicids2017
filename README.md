@@ -9,7 +9,8 @@ beyond raw accuracy:
 1. **Zero-day generalisation** - Leave-One-Attack-Out (LOAO): train with one attack family removed, test it as unseen.
 2. **Protocol validity** - how much do identical flows shared between train and test inflate CICIDS2017 results?
 
-> `PROJECT_CONTEXT.md` holds the full technical detail (cleaning steps, architecture, every result).
+> All code lives in `T014_Project/`; final submission files go in `T014_Submission/`.
+> `T014_Project/PROJECT_CONTEXT.md` holds the full technical detail (cleaning steps, architecture, every result).
 > This README is the quick tour: what is here, how to run it, and how to check each module.
 
 ## Key results
@@ -31,6 +32,7 @@ Source files: `results/final/`, `results/loao/`, `results/protocol_check/`, `res
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
+cd T014_Project
 pip install -r requirements.txt
 pip install tensorflow keras          # training + model inference
 pip install PySide6 segno             # live demo app (desktop UI + QR code)
@@ -41,7 +43,7 @@ Large processed CSVs and model weights are git-ignored and regenerated locally.
 
 ## Modules and how to check each one
 
-Run every script from the project root. Each stage reads the previous stage's output from `data/processed/`.
+Run every script from inside `T014_Project/` (`cd T014_Project` first). Each stage reads the previous stage's output from `data/processed/`.
 Settings (paths, feature counts, hyper-parameters) are constants at the top of each file.
 
 | # | Module | Command | What to look for |
@@ -98,13 +100,16 @@ CLI alternative: `python src/presentation_demo.py` (interactive prompt, Top-40 m
 ## Repository layout
 
 ```text
-src/            pipeline, training, LOAO, leakage audit, figures, CLI demos
-webapp/         NIDS Command Center (app.py = UI, server.py = detection engine + phone endpoint)
-results/        reports, LOAO and leakage outputs, figures (tracked)
-notebooks/      EDA and feature analysis
-data/           raw/ and processed/ (large files git-ignored)
-models/         trained .keras weights (git-ignored)
-PROJECT_CONTEXT.md   full technical context and results
+T014_Project/
+  src/            pipeline, training, LOAO, leakage audit, figures, CLI demos
+  webapp/         NIDS Command Center (app.py = UI, server.py = detection engine + phone endpoint)
+  results/        reports, LOAO and leakage outputs, figures (tracked)
+  notebooks/      EDA and feature analysis
+  data/           raw/ and processed/ (large files git-ignored)
+  models/         trained .keras weights (git-ignored)
+  requirements.txt, PROJECT_CONTEXT.md
+T014_Submission/  T014_ProjectReport.pdf, T014_Paper.pdf, T014_DemoVideo.mp4
+README.md         this file
 ```
 
 ## Limitations

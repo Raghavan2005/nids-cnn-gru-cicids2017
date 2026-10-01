@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Layout note:** all project code and data live in `T014_Project/` (`src/`, `webapp/`, `data/`, `models/`, `results/`, `notebooks/`, `PROJECT_CONTEXT.md`, `requirements.txt`). Every path below (e.g. `src/preprocessing.py`, `data/processed/`) is relative to `T014_Project/`, and scripts are run from inside it. `T014_Submission/` holds the college submission files; `webapp/` is the PySide6 demo (`python webapp/app.py`).
+
 ## Project overview
 
 Intelligent Network Intrusion Detection System (NIDS) research project (final-year paper, "PS26"). It builds a CNN-GRU deep learning classifier on the **CICIDS2017** dataset for 7-class network traffic classification (BENIGN, DoS Hulk, DDoS, PortScan, DoS GoldenEye, FTP-Patator, SSH-Patator), and investigates two research questions beyond raw accuracy:
