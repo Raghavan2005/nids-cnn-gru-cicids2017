@@ -67,6 +67,7 @@ For the real results, copy `cnn_gru_top40_final.keras` into `T014_Project/models
 ```text
 T014_Project/      code, data layout, results, notebooks, demo app   (details: T014_Project/README.md)
 T014_ProjectReport.pdf  project report (Phase I)
+T014_Paper.pdf    project paper (zero-day generalisation study)
 T014_DemoVideo.mp4 screen recording of the live demo
 ```
 
