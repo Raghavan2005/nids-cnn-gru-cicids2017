@@ -22,7 +22,10 @@ and the research results. The phone page is shown on the right.
 |---|---|
 | <img src="T014_Project/docs/screenshots/02_phone_connected.png" width="260"> | <img src="T014_Project/docs/screenshots/04_phone_blocked.png" width="260"> |
 
-**Video:** [`app_demo_preview.mp4`](T014_Project/docs/app_demo_preview.mp4) (33 s) shows the same flow: normal traffic, the phone
+**Demo video:** [`T014_DemoVideo.mp4`](T014_DemoVideo.mp4) is a screen recording of the live phone-to-PC demo with a real phone (log rows marked
+`LIVE`), on the synthetic stand-in model/data.
+
+**Preview video:** [`app_demo_preview.mp4`](T014_Project/docs/app_demo_preview.mp4) (33 s) shows the same flow: normal traffic, the phone
 connecting, a DDoS burst being detected and blocked (HTTP 403), and a random simulated attacker being blocked.
 
 > These screenshots and the preview video are rendered from the running app on **synthetic stand-in data** (the status bar says
@@ -63,6 +66,7 @@ For the real results, copy `cnn_gru_top40_final.keras` into `T014_Project/models
 
 ```text
 T014_Project/      code, data layout, results, notebooks, demo app   (details: T014_Project/README.md)
+T014_DemoVideo.mp4 screen recording of the live demo
 ```
 
 Pipeline, module-by-module run commands and the model architecture are documented in
