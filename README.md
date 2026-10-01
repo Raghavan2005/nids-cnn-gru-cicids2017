@@ -1,238 +1,116 @@
-# PS26 – Intelligent Network Intrusion Detection System
+# Intelligent Network Intrusion Detection System (CNN-GRU on CICIDS2017)
 
-## Project Title
+**Team T014** - Final Year Project
 
-Intelligent Network Intrusion Detection System (NIDS) Using Deep Learning
+A deep-learning network intrusion detection system (NIDS) that classifies network flows into 7 classes
+(BENIGN, DoS Hulk, DDoS, PortScan, DoS GoldenEye, FTP-Patator, SSH-Patator), plus two research questions
+beyond raw accuracy:
 
-## Project Objective
+1. **Zero-day generalisation** - Leave-One-Attack-Out (LOAO): train with one attack family removed, test it as unseen.
+2. **Protocol validity** - how much do identical flows shared between train and test inflate CICIDS2017 results?
 
-The objective of this project is to develop an intelligent Network Intrusion Detection System capable of detecting and classifying malicious network traffic using deep learning.
+> `PROJECT_CONTEXT.md` holds the full technical detail (cleaning steps, architecture, every result).
+> This README is the quick tour: what is here, how to run it, and how to check each module.
 
-The current research work focuses on the CICIDS2017 dataset and investigates data quality, feature redundancy, statistical feature selection, and preparation of the dataset for a CNN-GRU based NIDS.
+## Key results
 
----
+| Evaluation | Result |
+|---|---|
+| Standard stratified 80/20 test (Top-40 features) | Accuracy 1.0000, Macro-F1 1.0000 |
+| Top-10 features only | Accuracy 0.9995, Macro-F1 0.9931 |
+| **Zero-day (LOAO), mean over 6 unseen attacks** | **Recall 6.23%, F1 11.50%** |
+| **Train/test leakage (Top-30 features)** | **21.23% of train rows and 25.90% of test rows share an identical feature vector across the split; 81 such patterns carry conflicting labels** |
 
-# Current Research Pipeline
+The gap is the finding: near-perfect accuracy on the usual split, but very low recall on attacks the model has never seen,
+and part of the "perfect" score comes from duplicated flows. Do not "fix" LOAO to match the conventional numbers.
 
-The current preprocessing and feature-selection pipeline is:
+Per-attack LOAO recall: DoS Hulk 2.44%, DDoS 5.51%, PortScan 6.02%, DoS GoldenEye 13.17%, FTP-Patator 2.53%, SSH-Patator 7.69%.
+Source files: `results/final/`, `results/loao/`, `results/protocol_check/`, `results/cnn_gru_top{10,20,30,40}_report.txt`.
 
-```text
-Raw CICIDS2017 Dataset
-        ↓
-Data Quality Analysis
-        ↓
-Conflict Detection and Removal
-        ↓
-NaN / Infinity Removal
-        ↓
-Class Selection
-        ↓
-Global Conflict Cleaning
-        ↓
-Feature Cleaning
-        ↓
-Train/Test Split
-        ↓
-ANOVA Feature Selection
-        ↓
-Feature Subset Creation
-        ↓
-Feature Scaling
-        ↓
-CNN-GRU Model
+## Setup
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pip install tensorflow keras          # training + model inference
+pip install PySide6 segno             # live demo app (desktop UI + QR code)
 ```
 
----
+The raw **CICIDS2017** CSVs are not in the repo (too large). Download them separately into `data/raw/`.
+Large processed CSVs and model weights are git-ignored and regenerated locally.
 
-# Dataset
+## Modules and how to check each one
 
-Dataset:
-- CICIDS2017
+Run every script from the project root. Each stage reads the previous stage's output from `data/processed/`.
+Settings (paths, feature counts, hyper-parameters) are constants at the top of each file.
 
-Selected classes:
-1. BENIGN
-2. DoS Hulk
-3. DDoS
-4. PortScan
-5. DoS GoldenEye
-6. FTP-Patator
-7. SSH-Patator
+| # | Module | Command | What to look for |
+|---|---|---|---|
+| 1 | Cleaning | `python src/preprocessing.py` | NaN/Inf removed; conflicting-label duplicates dropped |
+| 2 | Feature cleaning | `python src/feature_cleaning.py` | 8 constant + 9 duplicate columns dropped: 78 -> 61 features |
+| 3 | Split | `python src/split_dataset.py` | 2,244,572 train / 561,143 test, class proportions preserved |
+| 4 | ANOVA selection | `python src/anova_selection.py`, `python src/create_anova_datasets.py` | Ranking in `data/processed/feature_selection/`; Top-10/20/30/40/61 sets |
+| 5 | Scaling + class weights | `python src/scale_dataset.py`, `python src/class_weights.py` | StandardScaler fit on **train only** |
+| 6 | Sequences | `python src/create_class_sequences.py` | Tensors of shape `(N, 10, features)` (window 10, stride 10) |
+| 7 | Training | `python src/train_cnn_gru.py` | Model in `models/`, report in `results/cnn_gru_top*_report.txt` |
+| 8 | LOAO (zero-day) | `python src/loao_experiment.py`, `python src/analyze_loao.py` | `results/loao/loao_summary.csv` (mean recall ~6%) |
+| 9 | Leakage audit | `python src/deep_leakage_check.py`, `python src/protocol_sanity_check.py` | `results/protocol_check/` (21.23% / 25.90% overlap) |
+| 10 | Figures / tables | `python src/final_results_table.py`, `python src/create_paper1_figures.py` | `results/final/` |
+| 11 | Live demo | `python webapp/app.py` | see below |
 
-The original dataset contains multiple attack categories. For the current experiment, seven classes were selected.
+Pipeline check without the real dataset: `python src/generate_synthetic_data.py` writes small CSVs with the CICIDS2017 column
+schema so every stage can be exercised end to end. Numbers from synthetic data verify the **mechanics only**,
+not the findings above.
 
----
+## Model
 
-# Data Cleaning
+`Input (10, F)` -> Conv1D(64, k=3) -> BatchNorm -> MaxPool(2) -> Conv1D(128, k=3) -> BatchNorm -> GRU(64) -> Dropout(0.3)
+-> Dense(64) -> Dropout(0.3) -> Dense(7, softmax). Adam (lr 1e-3), sparse categorical cross-entropy, inverse-frequency class
+weights, EarlyStopping / ReduceLROnPlateau / ModelCheckpoint. Naming: `models/cnn_gru_top{10,20,30,40}_final.keras`;
+Top-40 is the demo model.
 
-The preprocessing pipeline identified:
-- Missing values
-- Infinite values
-- Duplicate rows
-- Duplicate feature vectors
-- Conflicting feature vectors with different labels
-- Constant features
-- Exact duplicate features
-- Invalid negative feature values
+## Live demo: NIDS Command Center
 
-### Conflict Cleaning
-
-Feature vectors occurring with multiple labels were removed.
-This was performed both at the file-level preprocessing stage and through a final global conflict-cleaning stage.
-
-After global conflict cleaning:
-- Conflicting feature groups remaining: 0
-- Missing values: 0
-- Infinite values: 0
-
----
-
-# Feature Cleaning
-
-The cleaned dataset initially contained:
-- Rows: 2,805,750
-- Columns: 79
-- Features: 78
-
-35 anomalous rows containing invalid negative values were removed.
-
-8 constant features were removed:
-- Bwd PSH Flags
-- Bwd URG Flags
-- Fwd Avg Bytes/Bulk
-- Fwd Avg Packets/Bulk
-- Fwd Avg Bulk Rate
-- Bwd Avg Bytes/Bulk
-- Bwd Avg Packets/Bulk
-- Bwd Avg Bulk Rate
-
-9 exact duplicate features were removed:
-- Subflow Fwd Packets
-- Subflow Bwd Packets
-- Fwd Header Length.1
-- CWE Flag Count
-- SYN Flag Count
-- Avg Fwd Segment Size
-- Avg Bwd Segment Size
-- Subflow Fwd Bytes
-- Subflow Bwd Bytes
-
-Final feature-cleaned dataset:
-- Rows: 2,805,715
-- Columns: 62
-- Features: 61
-- Missing values: 0
-- Infinite values: 0
-
----
-
-# Train/Test Split
-
-An 80/20 stratified train/test split was performed.
-
-Training:
-- 2,244,572 rows
-
-Testing:
-- 561,143 rows
-
-The class proportions were preserved between training and testing sets.
-
----
-
-# ANOVA Feature Selection
-
-ANOVA F-test was applied to the training data.
-
-61 features were ranked according to their ANOVA F-score.
-
-The following feature subsets were generated:
-- Top 10
-- Top 20
-- Top 30
-- Top 40
-- Top 61
-
-The top-ranked features include:
-1. Bwd Packet Length Std
-2. Bwd Packet Length Mean
-3. Bwd Packet Length Max
-4. Packet Length Std
-5. Fwd IAT Std
-6. Max Packet Length
-7. Packet Length Variance
-8. Idle Min
-9. Idle Mean
-10. Average Packet Size
-
----
-
-# Current Status
-
-Completed:
-- [x] Raw CICIDS2017 loading
-- [x] Dataset quality analysis
-- [x] NaN/Infinity analysis
-- [x] Duplicate analysis
-- [x] Conflicting feature-vector analysis
-- [x] Global conflict removal
-- [x] Feature anomaly analysis
-- [x] Constant feature removal
-- [x] Exact duplicate feature removal
-- [x] Train/test split
-- [x] ANOVA feature ranking
-- [x] Top-10 feature dataset
-- [x] Top-20 feature dataset
-- [x] Top-30 feature dataset
-- [x] Top-40 feature dataset
-- [x] Top-61 feature dataset
-- [ ] Feature scaling
-- [ ] CNN-GRU model
-- [ ] Model evaluation
-- [ ] Explainability analysis
-- [ ] Zero-day/generalization experiments
-
----
-
-# Repository Structure
-
-```text
-PS26-PAPER1/
-│
-├── data/
-│   ├── raw/
-│   └── processed/
-│
-├── src/
-│   ├── preprocessing.py
-│   ├── feature_cleaning.py
-│   ├── split_dataset.py
-│   ├── anova_selection.py
-│   ├── create_anova_datasets.py
-│   └── scale_dataset.py
-│
-├── results/
-├── notebooks/
-├── docs/
-├── models/
-│
-├── README.md
-├── requirements.txt
-└── .gitignore
+```bash
+python webapp/app.py
 ```
 
-### Important
+One desktop window (PySide6). A phone on the same Wi-Fi scans the QR code, opens a page, and sends traffic to the PC.
+The CNN-GRU model classifies each flow live and the PC blocks repeat attackers (the phone then gets HTTP 403).
 
-The raw CICIDS2017 dataset and generated CSV files are not stored directly in this repository because of their large size.
+The dashboard shows: connection QR + counters, traffic-per-second chart, a live log of every request (filter, pause, CSV export,
+also saved to `webapp/logs/traffic.log`), top source IPs, defence controls, the model's class probabilities, and the research
+results (standard test, LOAO recall, leakage audit).
 
-Each researcher should obtain the dataset separately and place the raw CSV files inside:
-`data/raw/`
+Be clear about what is real:
+- The phone's HTTP requests are **real**. The model, however, classifies **CICIDS2017 flow-feature sequences sampled from the test set**
+  for the traffic type chosen on the phone - a browser cannot produce those flow features.
+- **Simulated network**: a switchable background generator sends mostly normal flows from random IPs in the reserved
+  documentation ranges (`203.0.113.x`, `198.51.100.x`, `192.0.2.x`) with occasional short attack bursts. Every such line is tagged
+  `SIM` in the Origin column.
+- The status pill at the top shows **SYNTHETIC** when the model and test data in `models/` and
+  `data/processed/sequences_class/` are the stand-ins from `generate_synthetic_data.py`. For the real demo put
+  `cnn_gru_top40_final.keras` and `test_top_40_X.npy` / `test_top_40_y.npy` there; the pill turns green.
+- Set `NIDS_PORT` to change the port (default 8000).
 
-The preprocessing scripts can then regenerate the processed datasets.
+CLI alternative: `python src/presentation_demo.py` (interactive prompt, Top-40 model).
 
-### Research Direction
+## Repository layout
 
-The current research investigates a lightweight and explainable deep-learning based NIDS.
+```text
+src/            pipeline, training, LOAO, leakage audit, figures, CLI demos
+webapp/         NIDS Command Center (app.py = UI, server.py = detection engine + phone endpoint)
+results/        reports, LOAO and leakage outputs, figures (tracked)
+notebooks/      EDA and feature analysis
+data/           raw/ and processed/ (large files git-ignored)
+models/         trained .keras weights (git-ignored)
+PROJECT_CONTEXT.md   full technical context and results
+```
 
-The planned model architecture is based on CNN-GRU, with feature reduction through statistical selection and explainability through SHAP.
+## Limitations
 
-Further experiments will investigate model performance and generalization, including zero-day/leave-one-attack-out evaluation.
+- Flow-feature based and offline: it does not capture or parse raw packets.
+- 7 classes from a 2017 dataset; supervised softmax classification cannot recognise attack families it was not trained on
+  (this is what LOAO measures).
+- ANOVA ranks features one at a time and ignores interactions.
+- Results depend on the CICIDS2017 split protocol, which this project shows to contain duplicated flows.
