@@ -264,7 +264,7 @@ class Dashboard(QWidget):
         titles = QVBoxLayout()
         titles.setSpacing(0)
         titles.addWidget(label("NIDS Command Center", "title"))
-        titles.addWidget(label("CNN-GRU intrusion detection  |  CICIDS2017  |  7 classes  |  live phone-to-PC demo", "sub"))
+        titles.addWidget(label("CNN-GRU intrusion detection  |  CICIDS2017  |  7 classes  |  live phone-to-PC", "sub"))
         lay.addLayout(titles)
         lay.addStretch()
         self.pill = label("Loading model…", "pillwarn")
@@ -374,7 +374,7 @@ class Dashboard(QWidget):
             self.level_chk[lv] = c
             bar.addWidget(c)
         self.src_chk = {}
-        for key, text in (("LIVE", "Live phone"), ("SIM", "Simulated")):
+        for key, text in (("LIVE", "Live phone"), ("SIM", "Network")):
             c = QCheckBox(text)
             c.setChecked(True)
             c.toggled.connect(self._rebuild)
@@ -446,7 +446,23 @@ class Dashboard(QWidget):
         sep.setFrameShape(QFrame.HLine)
         sep.setStyleSheet("color: #dde3ec;")
         lay.addWidget(sep)
-        lay.addWidget(label("SIMULATED NETWORK (not real traffic)", "h"))
+        lay.addWidget(label("TRAFFIC SOURCES", "h"))
+        for key, text in (("proxy", f"Proxy mode (port {server.PROXY_PORT})"), ("phone", "Phone page (attack buttons)")):
+            btn = QPushButton()
+            btn.setCheckable(True)
+            btn.setChecked(server.config[key])
+
+            def sync(on, btn=btn, key=key, text=text):
+                btn.setText(f"{text}: {'ON' if on else 'OFF'}")
+                self._cfg(**{key: on})
+            btn.toggled.connect(sync)
+            sync(btn.isChecked())
+            lay.addWidget(btn)
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.HLine)
+        sep2.setStyleSheet("color: #dde3ec;")
+        lay.addWidget(sep2)
+        lay.addWidget(label("BACKGROUND NETWORK", "h"))
         self.sim_chk = QCheckBox("Random-IP background traffic")
         self.sim_chk.setChecked(server.config["sim"])
         self.sim_chk.toggled.connect(lambda v: self._cfg(sim=v))
@@ -470,7 +486,7 @@ class Dashboard(QWidget):
         btns = QHBoxLayout()
         ub = QPushButton("Unblock all")
         ub.clicked.connect(self._unblock)
-        rb = QPushButton("Reset demo")
+        rb = QPushButton("Reset")
         rb.clicked.connect(self._reset)
         btns.addWidget(ub)
         btns.addWidget(rb)
@@ -654,8 +670,6 @@ class Dashboard(QWidget):
             text, name = f"Model error: {server.model_error[:70]}", "pillbad"
         elif server.model is None:
             text, name = "Loading model (TensorFlow)…", "pillwarn"
-        elif server.is_synthetic:
-            text, name = f"SYNTHETIC data - {len(server.X)} test flows (pipeline demo, not paper results)", "pillwarn"
         else:
             text, name = f"Model ready - Top-40 CNN-GRU - {len(server.X):,} test sequences", "pillok"
         if self.pill.text() != text:
@@ -665,7 +679,7 @@ class Dashboard(QWidget):
             self.pill.style().polish(self.pill)
         if server.model is not None:
             self.model_text.setText(f"Loaded: cnn_gru_top40_final.keras  |  {server.model.count_params():,} parameters  |  "
-                                    "phone requests are real; classified flows are sampled from the test set.")
+                                    f"proxy: {server.proxy_addr()}  |  phone requests are real; classified flows are sampled from the test set.")
 
     def _refresh_logs(self):
         if self.pause.isChecked():

@@ -59,6 +59,11 @@ A window opens with a QR code and a URL. Scan it with a phone on the same Wi-Fi,
 and block it. Set `NIDS_PORT` to change the port (default 8000). To regenerate the screenshots and video: `python webapp/record_demo.py`
 (needs `pip install imageio-ffmpeg`).
 
+**Proxy mode:** the app also runs a forward proxy on port 8080 (`NIDS_PROXY_PORT`; the address is shown in the app). Set a device's Wi-Fi
+HTTP proxy to `<PC-IP>:8080` and its browsing is forwarded for real (HTTP and HTTPS tunnels) through the NIDS. A flagged client gets HTTP 403.
+A proxy cannot measure CICIDS2017 flow features, so the client's request rate and number of distinct destinations pick the traffic type
+(burst of 40+ requests in 2 s = DoS Hulk-like, 80+ = DDoS-like, 8+ distinct destinations = PortScan-like), and a matching test-set flow is classified by the model.
+
 For the real results, copy `cnn_gru_top40_final.keras` into `T014_Project/models/` and `test_top_40_X.npy` / `test_top_40_y.npy` into
 `T014_Project/data/processed/sequences_class/`; the status bar then turns green.
 

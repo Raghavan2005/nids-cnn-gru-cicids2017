@@ -16,12 +16,15 @@ import collections
 import csv
 import itertools
 import json
+import http.client
 import os
 import random
 import re
 import socket
 import threading
+import select
 import time
+from urllib.parse import urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -37,6 +40,7 @@ X_PATH = PROJECT_ROOT / "data" / "processed" / "sequences_class" / "test_top_40_
 Y_PATH = PROJECT_ROOT / "data" / "processed" / "sequences_class" / "test_top_40_y.npy"
 
 PORT = int(os.environ.get("NIDS_PORT", "8000"))
+PROXY_PORT = int(os.environ.get("NIDS_PROXY_PORT", "8080"))
 CLASS_NAMES = ["BENIGN", "DoS Hulk", "DDoS", "PortScan",
                "DoS GoldenEye", "FTP-Patator", "SSH-Patator"]
 # A test set this small can only be the synthetic stand-in data.
@@ -77,7 +81,7 @@ events = []           # newest last
 blocked = {}          # ip -> {"since": ts, "reason": str}
 strikes = {}          # ip -> consecutive malicious detections
 config = {"defence": True, "threshold": 0.70, "strikes_to_block": 3,
-          "sim": True, "sim_rate": 3, "sim_interval": 30}
+          "proxy": True, "phone": True, "sim": False, "sim_rate": 3, "sim_interval": 30}
 sources = {}          # ip -> {"origin", "flows", "attacks", "dropped"}
 counters = {"total": 0, "attacks": 0, "blocked_requests": 0, "by_class": [0] * 7}
 
@@ -284,6 +288,8 @@ class Handler(BaseHTTPRequestHandler):
         ip = self.client_address[0]
 
         if route == "/api/send":
+            if not config["phone"]:
+                return self._json(503, {"error": "phone page is turned off"})
             if model is None:
                 return self._json(503, {"error": "model not loaded", "detail": model_error})
             cid = data.get("class_id")
@@ -316,7 +322,162 @@ class Handler(BaseHTTPRequestHandler):
 
 
 # ------------------------------------------------------------
-# Simulated background network (clearly labelled SIM in the log)
+# Forward proxy: real client traffic passes through the NIDS
+# ------------------------------------------------------------
+# Set a device's Wi-Fi proxy to <PC-IP>:PROXY_PORT. Every request is forwarded
+# for real (HTTP and HTTPS CONNECT tunnels). Blocked clients get 403.
+# The model needs CICIDS2017 flow features, which a proxy cannot measure, so
+# the client's behaviour (request rate / number of distinct destinations) picks
+# the traffic type, and a matching test-set flow is classified by the model.
+PROXY_WINDOW = 2.0
+PROXY_HULK_RATE = 40      # requests in window -> DoS Hulk-like
+PROXY_DDOS_RATE = 80      # requests in window -> DDoS-like
+PROXY_SCAN_TARGETS = 8    # distinct host:port in window -> PortScan-like
+_proxy_hist = {}          # ip -> deque[(time, host:port)]
+
+
+def proxy_behaviour(ip, target):
+    t = time.time()
+    with lock:
+        h = _proxy_hist.setdefault(ip, collections.deque())
+        h.append((t, target))
+        while h and t - h[0][0] > PROXY_WINDOW:
+            h.popleft()
+        n, targets = len(h), len({x[1] for x in h})
+    if n >= PROXY_DDOS_RATE:
+        return 2
+    if n >= PROXY_HULK_RATE:
+        return 1
+    if targets >= PROXY_SCAN_TARGETS:
+        return 3
+    return 0
+
+
+HOP = {"proxy-connection", "connection", "keep-alive", "te", "trailers",
+       "transfer-encoding", "upgrade", "proxy-authorization", "proxy-authenticate"}
+
+
+class ProxyHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *args):
+        pass
+
+    def _gate(self, target):
+        """Classify this request; returns (allowed, note, level, probs)."""
+        ip = self.client_address[0]
+        if model is None:
+            return True, "model not loaded - not inspected", "WARN", None
+        code, body = handle_send(ip, proxy_behaviour(ip, target))
+        return (code != 403, body.get("_note", ""), body.get("_level", "INFO"),
+                body.pop("_probs", None))
+
+    def _log(self, code, tx, note, level, probs, ms):
+        record_request({
+            "time": time.strftime("%H:%M:%S") + f".{int(time.time() * 1000) % 1000:03d}",
+            "src": "LIVE", "ip": self.client_address[0], "port": self.client_address[1],
+            "method": self.command, "path": self.path[:120], "status": code,
+            "rx": 0, "tx": tx, "ms": ms, "level": level, "note": "proxy: " + note,
+            "probs": probs, "ua": self.headers.get("User-Agent", "-")})
+
+    def _deny(self, t0, note, level, probs):
+        body = b"Blocked by NIDS: your IP was flagged.\n"
+        self.send_response(403)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+        self.close_connection = True
+        self._log(403, len(body), note, level, probs, round((time.perf_counter() - t0) * 1000, 1))
+
+    def _off(self):
+        body = b"NIDS proxy is turned off.\n"
+        self.send_response(503)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+        self.close_connection = True
+
+    def do_CONNECT(self):
+        if not config["proxy"]:
+            return self._off()
+        t0 = time.perf_counter()
+        ok, note, level, probs = self._gate(self.path)
+        if not ok:
+            return self._deny(t0, note, level, probs)
+        host, _, port = self.path.partition(":")
+        try:
+            up = socket.create_connection((host, int(port or 443)), timeout=10)
+        except OSError as exc:
+            self.send_error(502, str(exc))
+            return self._log(502, 0, note, "WARN", probs, 0)
+        self.send_response(200, "Connection Established")
+        self.end_headers()
+        self._log(200, 0, note, level, probs, round((time.perf_counter() - t0) * 1000, 1))
+        self.close_connection = True
+        socks = [self.connection, up]
+        try:
+            while True:
+                r, _, _ = select.select(socks, [], [], 30)
+                if not r:
+                    break
+                done = False
+                for a in r:
+                    data = a.recv(65536)
+                    if not data:
+                        done = True
+                        break
+                    (up if a is self.connection else self.connection).sendall(data)
+                if done:
+                    break
+        except OSError:
+            pass
+        finally:
+            up.close()
+
+    def _forward(self):
+        if not config["proxy"]:
+            return self._off()
+        t0 = time.perf_counter()
+        u = urlsplit(self.path)
+        if not u.hostname:      # not proxy-style request
+            self.send_error(400, "This is a proxy port; use it as a Wi-Fi HTTP proxy")
+            return
+        port = u.port or 80
+        ok, note, level, probs = self._gate(f"{u.hostname}:{port}")
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        payload = self.rfile.read(length) if length else None
+        if not ok:
+            return self._deny(t0, note, level, probs)
+        headers = {k: v for k, v in self.headers.items() if k.lower() not in HOP}
+        try:
+            c = http.client.HTTPConnection(u.hostname, port, timeout=15)
+            c.request(self.command, (u.path or "/") + (f"?{u.query}" if u.query else ""),
+                      payload, headers)
+            r = c.getresponse()
+            body = r.read()
+            self.send_response(r.status, r.reason)
+            for k, v in r.getheaders():
+                if k.lower() not in HOP and k.lower() != "content-length":
+                    self.send_header(k, v)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            c.close()
+            self._log(r.status, len(body), note, level, probs,
+                      round((time.perf_counter() - t0) * 1000, 1))
+        except (OSError, http.client.HTTPException) as exc:
+            self.send_error(502, str(exc))
+            self._log(502, 0, note, "WARN", probs, round((time.perf_counter() - t0) * 1000, 1))
+
+    do_GET = do_POST = do_PUT = do_DELETE = do_HEAD = do_OPTIONS = do_PATCH = _forward
+
+
+# ------------------------------------------------------------
+# Background network (clearly labelled SIM in the log)
 # ------------------------------------------------------------
 # RFC 5737 documentation ranges: guaranteed never to be real hosts.
 SIM_NETS = ["203.0.113.", "198.51.100.", "192.0.2."]
@@ -332,10 +493,10 @@ def _sim_send(ip, class_id):
     record_request({
         "time": time.strftime("%H:%M:%S") + f".{int(time.time() * 1000) % 1000:03d}",
         "src": "SIM", "ip": ip, "port": random.randint(1024, 65535),
-        "method": "FLOW", "path": "(simulated)", "status": code, "rx": 0, "tx": 0,
+        "method": "FLOW", "path": "(flow)", "status": code, "rx": 0, "tx": 0,
         "ms": round((time.perf_counter() - t0) * 1000, 1),
         "level": body.pop("_level", "INFO"), "note": body.pop("_note", ""),
-        "probs": body.pop("_probs", None), "ua": "simulated traffic generator"})
+        "probs": body.pop("_probs", None), "ua": "network traffic generator"})
 
 
 def sim_loop():
@@ -387,8 +548,17 @@ def start_server():
     """Start the phone-facing HTTP server on a daemon thread."""
     httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        proxy = ThreadingHTTPServer(("0.0.0.0", PROXY_PORT), ProxyHandler)
+        threading.Thread(target=proxy.serve_forever, daemon=True).start()
+    except OSError:
+        pass                    # proxy port busy: the rest of the app still works
     threading.Thread(target=sim_loop, daemon=True).start()
     return httpd
+
+
+def proxy_addr():
+    return f"{lan_ip()}:{PROXY_PORT}"
 
 
 def phone_url():
